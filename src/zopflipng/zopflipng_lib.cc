@@ -242,6 +242,10 @@ unsigned AutoChooseFilterStrategy(const std::vector<unsigned char>& image,
   // largely on the window size, the closer to the actual used window size the
   // better.
   int windowsize = 8192;
+  if (w*h > 1000*1000) {
+    // for large images this test is very expensive, so use smaller window size
+    windowsize = 4096;
+  }
 
   for (int i = 0; i < numstrategies; i++) {
     out.clear();
