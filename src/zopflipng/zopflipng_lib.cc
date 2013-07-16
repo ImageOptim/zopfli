@@ -222,7 +222,7 @@ unsigned TryOptimize(
 
   return 0;
 }
-
+ #include <dispatch/dispatch.h>
 // Use fast compression to check which PNG filter strategy gives the smallest
 // output. This allows to then do the slow and good compression only on that
 // filter type.
@@ -233,7 +233,6 @@ unsigned AutoChooseFilterStrategy(const std::vector<unsigned char>& image,
                                   int numstrategies,
                                   ZopfliPNGFilterStrategy* strategies,
                                   bool* enable) {
-  std::vector<unsigned char> out;
   size_t bestsize = 0;
   int bestfilter = 0;
 
@@ -247,13 +246,23 @@ unsigned AutoChooseFilterStrategy(const std::vector<unsigned char>& image,
     windowsize = 4096;
   }
 
-  for (int i = 0; i < numstrategies; i++) {
+  size_t sizes_data[numstrategies];
+  size_t *sizes = sizes_data;
+
+  dispatch_apply(numstrategies, dispatch_get_global_queue(0, 0), ^(size_t i){
+    std::vector<unsigned char> out;
     out.clear();
-    unsigned error = TryOptimize(image, w, h, inputstate, bit16, origfile,
+    const lodepng::State statecopy(inputstate);
+
+    unsigned error = TryOptimize(image, w, h, statecopy, bit16, origfile,
                                  strategies[i], false, windowsize, 0, &out);
-    if (error) return error;
-    if (bestsize == 0 || out.size() < bestsize) {
-      bestsize = out.size();
+    sizes[i] = error ? 0 : out.size();
+  });
+
+  for (int i = 1; i < numstrategies; i++) {
+    if (sizes[i]==0) continue;
+    if (bestsize == 0 || sizes[i] < bestsize) {
+      bestsize = sizes[i];
       bestfilter = i;
     }
   }
