@@ -457,7 +457,7 @@ void ZopfliLZ77Optimal(ZopfliBlockState *s,
   size_t pathsize = 0;
   ZopfliLZ77Store currentstore;
   SymbolStats stats, beststats, laststats;
-  int i;
+  int i, iterationlimit;
   double cost;
   double bestcost = ZOPFLI_LARGE_FLOAT;
   double lastcost = 0;
@@ -488,9 +488,11 @@ void ZopfliLZ77Optimal(ZopfliBlockState *s,
   }
 #endif
 
-  /* Repeat statistics with each time the cost model from the previous stat
-  run. */
-  for (i = 0; i < s->options->numiterations; i++) {
+  /* approximate numiterations when counter increase is variable */
+  iterationlimit = s->options->numiterations * 11/8;
+
+  /* Repeat statistics with each time the cost model from the previous stat run. */
+  for (i = 0; i < iterationlimit; i+=2) {
     ZopfliCleanLZ77Store(&currentstore);
     ZopfliInitLZ77Store(&currentstore);
     LZ77OptimalRun(s, in, instart, inend, &path, &pathsize,
@@ -506,6 +508,11 @@ void ZopfliLZ77Optimal(ZopfliBlockState *s,
       ZopfliCopyLZ77Store(&currentstore, store);
       CopyStats(&stats, &beststats);
       bestcost = cost;
+      i--; /* iterate more if it's going well */
+    } else if (cost == lastcost) {
+      i++; /* iterate less if it's fruitless */
+    } else if (cost >= lastcost) {
+      i+=2; /* iterate less if it's fruitless */
     }
     CopyStats(&stats, &laststats);
     ClearStatFreqs(&stats);
@@ -517,7 +524,7 @@ void ZopfliLZ77Optimal(ZopfliBlockState *s,
       AddWeighedStatFreqs(&stats, 1.0, &laststats, 0.5, &stats);
       CalculateStatistics(&stats);
     }
-    if (i > 5 && cost == lastcost) {
+    if (i > 7 && cost == lastcost) {
       CopyStats(&beststats, &stats);
       RandomizeStatFreqs(&ran_state, &stats);
       CalculateStatistics(&stats);
@@ -526,7 +533,7 @@ void ZopfliLZ77Optimal(ZopfliBlockState *s,
     lastcost = cost;
 
 #ifdef CLOCKS_PER_SEC
-    if (iterationlimitseconds > 0) {
+    if (i > 3 && iterationlimitseconds > 0) {
       double diff_sec = (double)(clock()-start)/CLOCKS_PER_SEC;
       if (diff_sec >= iterationlimitseconds) {
         if (s->options->verbose_more) {
