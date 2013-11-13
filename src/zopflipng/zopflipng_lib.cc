@@ -138,9 +138,8 @@ unsigned TryOptimize(
   lodepng::State state;
   state.encoder.zlibsettings.windowsize = windowsize;
   if (use_zopfli && png_options->use_zopfli) {
-    ZopfliPNGOptions custom_context = *png_options;
     state.encoder.zlibsettings.custom_deflate = CustomPNGDeflate;
-    state.encoder.zlibsettings.custom_context = &custom_context;
+    state.encoder.zlibsettings.custom_context = (ZopfliPNGOptions *) png_options;
   }
 
   if (inputstate.info_png.color.colortype == LCT_PALETTE) {
