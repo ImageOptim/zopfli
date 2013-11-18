@@ -217,7 +217,7 @@ unsigned TryOptimize(
   }
 
   if (error) {
-    printf("Encoding error %i: %s\n", error, lodepng_error_text(error));
+    printf("Encoding error %u: %s\n", error, lodepng_error_text(error));
     return error;
   }
 
@@ -333,7 +333,7 @@ int ZopfliPNGOptimize(const std::vector<unsigned char>& origpng,
 
   if (error) {
     if (verbose) {
-      printf("Decoding error %i: %s\n", error, lodepng_error_text(error));
+      printf("Decoding error %u: %s\n", error, lodepng_error_text(error));
     }
     return error;
   }
